@@ -23,6 +23,9 @@ namespace xsimd
     template <class batch_type, bool... Values>
     struct batch_bool_constant;
 
+    template <class batch_type, typename batch_type::value_type... Values>
+    struct batch_constant;
+
     namespace kernel
     {
         using namespace types;
@@ -1211,6 +1214,52 @@ namespace xsimd
         inline batch<double, A> sub(batch<double, A> const& self, batch<double, A> const& other, requires_arch<sse2>) noexcept
         {
             return _mm_sub_pd(self, other);
+        }
+
+        // swizzle
+
+        namespace detail
+        {
+            constexpr uint32_t shuffle(uint32_t w, uint32_t x, uint32_t y, uint32_t z)
+            {
+                return (z << 6) | (y << 4) | (x << 2) | w;
+            }
+            constexpr uint32_t shuffle(uint32_t x, uint32_t y)
+            {
+                return (x << 1) | y;
+            }
+        }
+
+        template <class A, uint32_t V0, uint32_t V1, uint32_t V2, uint32_t V3>
+        inline batch<float, A> swizzle(batch<float, A> const& self, batch_constant<batch<uint32_t, A>, V0, V1, V2, V3>, requires_arch<sse2>) noexcept
+        {
+            return _mm_shuffle_ps(self, self, detail::shuffle(V0, V1, V2, V3));
+        }
+
+        template <class A, uint64_t V0, uint64_t V1>
+        inline batch<double, A> swizzle(batch<double, A> const& self, batch_constant<batch<uint64_t, A>, V0, V1>, requires_arch<sse2>) noexcept
+        {
+            return _mm_shuffle_pd(self, self, detail::shuffle(V0, V1));
+        }
+
+        template <class A, uint64_t V0, uint64_t V1>
+        inline batch<uint64_t, A> swizzle(batch<uint64_t, A> const& self, batch_constant<batch<uint64_t, A>, V0, V1>, requires_arch<sse2>) noexcept
+        {
+            constexpr uint32_t index = detail::shuffle(2 * V0, 2 * V0 + 1, 2 * V1, 2 * V1 + 1);
+            return _mm_shuffle_epi32(self, index);
+        }
+
+        template <class A, uint64_t V0, uint64_t V1>
+        inline batch<int64_t, A> swizzle(batch<int64_t, A> const& self, batch_constant<batch<uint64_t, A>, V0, V1> mask, requires_arch<sse2>) noexcept
+        {
+            return bitwise_cast<int64_t>(swizzle(bitwise_cast<uint64_t>(self), mask, sse2 {}));
+        }
+
+        template <class A, uint32_t V0, uint32_t V1, uint32_t V2, uint32_t V3>
+        inline batch<uint32_t, A> swizzle(batch<uint32_t, A> const& self, batch_constant<batch<uint32_t, A>, V0, V1, V2, V3>, requires_arch<sse2>) noexcept
+        {
+            constexpr uint32_t index = detail::shuffle(V0, V1, V2, V3);
+            return _mm_shuffle_epi32(self, index);
         }
 
         // to_float

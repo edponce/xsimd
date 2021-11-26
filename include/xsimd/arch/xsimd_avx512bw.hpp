@@ -371,6 +371,20 @@ namespace xsimd
             }
         }
 
+        // swizzle
+
+        template <class A, uint16_t... Vs>
+        inline batch<uint16_t, A> swizzle(batch<uint16_t, A> const& self, batch_constant<batch<uint16_t, A>, Vs...> mask, requires_arch<avx512bw>) noexcept
+        {
+            return _mm512_permutexvar_epi16((batch<uint16_t, A>)mask, self);
+        }
+
+        template <class A, uint8_t... Vs>
+        inline batch<uint8_t, A> swizzle(batch<uint8_t, A> const& self, batch_constant<batch<uint8_t, A>, Vs...> mask, requires_arch<avx512bw>) noexcept
+        {
+            return _mm512_permutexvar_epi8((batch<uint8_t, A>)mask, self);
+        }
+
     }
 
 }
